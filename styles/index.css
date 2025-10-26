@@ -3,6 +3,7 @@ html, body {
 	height: 500px;
 	margin: 0;
 	padding: 0;
+	background-color: #000000 !important;
 }
 
 body {
@@ -17,6 +18,8 @@ body {
 	right: 0;
 	bottom: 0;
 	display: block;
+	background-color: #000000 !important;
+	color: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -171,6 +171,12 @@ document.addEventListener("DOMContentLoaded", function() {
   };
 
   _.defer(function() {
+    // Force initial size before anything loads
+    document.documentElement.style.height = '520px';
+    document.documentElement.style.minHeight = '520px';
+    document.body.style.height = '520px';
+    document.body.style.minHeight = '520px';
+
     vm = new ExtensityViewModel();
     ko.bindingProvider.instance = new ko.secureBindingsProvider({});
     ko.applyBindings(vm, document.body);
@@ -224,6 +230,19 @@ document.addEventListener("DOMContentLoaded", function() {
       // Run a short burst of fixes right after open to cover async image loads
       var burst = setInterval(forcePopupHeight, 200);
       setTimeout(function() { clearInterval(burst); }, 1200);
+
+      // Add MutationObserver to catch any DOM changes that might affect size
+      var observer = new MutationObserver(function(mutations) {
+        forcePopupHeight();
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+
     } catch(e) {}
   });
 
