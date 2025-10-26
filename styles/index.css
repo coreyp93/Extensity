@@ -45,27 +45,95 @@
 	background: #d44;
 }
 
-/* Profile stacking checkboxes and legend */
+/* Profile section styling */
+.section-header {
+	background: linear-gradient(to bottom, rgba(128,128,128,0.2), rgba(128,128,128,0.1));
+	border-radius: 4px;
+	margin: 0 0 8px 0;
+	padding: 8px 12px;
+}
+
+.header-content {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+#profile-stack-legend {
+	font-size: 0.9em;
+	color: #00bfff;
+	font-weight: 500;
+	margin-left: 12px;
+	opacity: 0.9;
+}
+
 .profile-list-item {
+	cursor: pointer;
+	padding: 6px 8px;
+	margin: 4px 0;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	background: rgba(128,128,128,0.1);
+}
+
+.profile-list-item:hover {
+	background: rgba(128,128,128,0.2);
+	transform: translateY(-1px);
+}
+
+.profile-content {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.profile-icons {
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	padding: 4px 2px;
-	border-radius: 4px;
-	transition: background 0.15s;
 }
-.profile-list-item.selected {
-	background: #1a2a3a;
-}
+
 .profile-stack-checkbox {
 	accent-color: #00bfff;
 	width: 16px;
 	height: 16px;
+	cursor: pointer;
+	transition: transform 0.15s ease;
 }
-#profile-stack-legend {
-	font-size: 0.95em;
-	color: #00bfff;
+
+.profile-stack-checkbox:hover {
+	transform: scale(1.1);
+}
+
+.profile-icon {
+	opacity: 0.8;
+	transition: opacity 0.2s;
+}
+
+.profile-name {
 	font-weight: 500;
+	flex-grow: 1;
+}
+
+/* Profile activation animations */
+.profile-activated {
+	animation: activate 0.4s ease-out;
+}
+
+.profile-deactivated {
+	animation: deactivate 0.4s ease-out;
+}
+
+@keyframes activate {
+	0% { background: rgba(128,128,128,0.1); }
+	50% { background: rgba(0,255,0,0.2); }
+	100% { background: rgba(128,128,128,0.1); }
+}
+
+@keyframes deactivate {
+	0% { background: rgba(128,128,128,0.1); }
+	50% { background: rgba(255,0,0,0.2); }
+	100% { background: rgba(128,128,128,0.1); }
 }
 html, body {
 	width: 540px; /* 50% wider by default */
@@ -474,61 +542,95 @@ body.compact section.main {
 	padding: 0 4px;
 }
 
-/* Grid view modes */
-.grid #content ul {
+/* Base extension styles */
+#content ul li {
+	padding: 6px 8px;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	margin: 2px 0;
+}
+
+#content ul li .ext-name {
 	display: flex;
-	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+#content ul li img {
+	width: 16px;
+	height: 16px;
+	transition: all 0.2s ease;
+}
+
+/* Grid view modes */
+[data-view-mode="list"] #content ul li {
+	display: block;
+}
+
+[data-view-mode="columns"] #content ul {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
 	gap: 8px;
 	padding: 8px;
 }
 
-/* Two-column layout */
-.grid.columns #content ul li {
-	width: calc(50% - 4px);
-	display: flex;
-	align-items: center;
-	padding: 8px;
-	border-radius: 4px;
-	transition: background-color 0.2s;
+[data-view-mode="columns"] #content ul li {
+	margin: 0;
 }
 
-.grid.columns #content ul li img {
-	width: 24px;
-	height: 24px;
-	margin-right: 8px;
+[data-view-mode="icons-large"] #content ul {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+	padding: 12px;
 }
 
-/* Large icons grid */
-.grid.icons #content ul li {
-	width: calc(25% - 6px);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
+[data-view-mode="icons-large"] #content ul li {
 	text-align: center;
 	padding: 12px 8px;
-	border-radius: 6px;
-	transition: all 0.2s;
 }
 
-.grid.icons #content ul li img {
+[data-view-mode="icons-large"] #content ul li .ext-name {
+	flex-direction: column;
+	gap: 8px;
+}
+
+[data-view-mode="icons-large"] #content ul li img {
 	width: 48px;
 	height: 48px;
-	margin-bottom: 8px;
-	transition: transform 0.2s;
 }
 
-.grid.icons #content ul li:hover img {
-	transform: scale(1.1);
+[data-view-mode="icons-small"] #content ul {
+	display: grid;
+	grid-template-columns: repeat(6, 1fr);
+	gap: 8px;
+	padding: 8px;
 }
 
-.grid.icons.compact #content ul li {
-	width: calc(16.666% - 7px);
+[data-view-mode="icons-small"] #content ul li {
+	text-align: center;
 	padding: 8px 4px;
 }
 
-.grid.icons.compact #content ul li img {
+[data-view-mode="icons-small"] #content ul li .ext-name {
+	flex-direction: column;
+	gap: 6px;
+}
+
+[data-view-mode="icons-small"] #content ul li img {
 	width: 32px;
 	height: 32px;
+}
+
+/* Hover effects */
+#content ul li:hover {
+	background-color: rgba(128, 128, 128, 0.2);
+	transform: translateY(-1px);
+}
+
+[data-view-mode="icons-large"] #content ul li:hover img,
+[data-view-mode="icons-small"] #content ul li:hover img {
+	transform: scale(1.1);
 }
 
 /* Profile animations */

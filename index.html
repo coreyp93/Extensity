@@ -56,18 +56,28 @@
 
 	<!-- Profiles -->
 	<section id="profiles" data-sbind="if: listedProfiles.any, visible: !search.q">
-		<h1 style="display:flex;align-items:center;justify-content:space-between;">
-			<span>Profiles</span>
-			<span id="profile-stack-legend" style="font-size:0.95em; font-weight:400; color:#aaa; margin-left:10px;"></span>
+		<h1 class="section-header">
+			<div class="header-content">
+				<span>Profiles</span>
+				<span id="profile-stack-legend"></span>
+			</div>
 		</h1>
 		<ul data-sbind="foreach: listedProfiles">
-			<li class="app profile-list-item" data-sbind="click: $parent.setProfile">
-				<input type="checkbox" class="profile-stack-checkbox" style="margin-right:7px;vertical-align:middle;" data-sbind="checked: $parent.selectedProfiles() && $parent.selectedProfiles.indexOf(name()) !== -1, visible: $parent.opts.stackProfiles && $parent.opts.stackProfiles()" onclick="event.stopPropagation();">
-				<i class="fa fa-check" alt="active" data-sbind="visible: name() == $parent.activeProfile()"></i>
-				<i class="fa fa-lightbulb-o" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && name()=='__always_on'"></i>
-				<i class="fa fa-star" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && name()=='__favorites'"></i>
-				<i class="fa fa-user-circle-o" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && !reserved()"></i>
-				<span data-sbind="text: short_name"></span>
+			<li class="profile-list-item" data-sbind="click: $parent.setProfile, attr: {'data-profile': name()}">
+				<div class="profile-content">
+					<input type="checkbox" class="profile-stack-checkbox" 
+						data-sbind="checked: $parent.selectedProfiles() && $parent.selectedProfiles.indexOf(name()) !== -1, 
+							visible: $parent.opts.stackProfiles && $parent.opts.stackProfiles(),
+							attr: {'data-name': name()}"
+						onclick="event.stopPropagation();">
+					<div class="profile-icons">
+						<i class="fa fa-check profile-icon" alt="active" data-sbind="visible: name() == $parent.activeProfile()"></i>
+						<i class="fa fa-lightbulb-o profile-icon" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && name()=='__always_on'"></i>
+						<i class="fa fa-star profile-icon" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && name()=='__favorites'"></i>
+						<i class="fa fa-user-circle-o profile-icon" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && !reserved()"></i>
+					</div>
+					<span class="profile-name" data-sbind="text: short_name"></span>
+				</div>
 			</li>
 		</ul>
 	</section>
@@ -144,18 +154,23 @@
 
 <script type="text/html" id="item-template">
 	<!-- ko if: !isApp() -->
-	<li class="extension" data-sbind="click: $parent.toggleExtension, css:{disabled: disabled}"><img width="16px" height="16px" data-sbind="attr:{src:icon}" />
-		<span data-sbind="text: short_name"></span>
-		<i class="fa fa-flask" title="Development" alt="Development" data-sbind="visible: is_development"></i>
-		<i class="fa fa-gear" title="Options" alt="Options" data-sbind="visible: $parent.opts.showOptions() && optionsUrl() && !disabled(), click: $parent.launchOptions, clickBubble: false"></i>
-
+	<li class="extension" data-sbind="click: $parent.toggleExtension, css:{disabled: disabled}, attr: {'data-extension-id': id()}">
+		<div class="ext-name">
+			<img width="16px" height="16px" data-sbind="attr:{src:icon}" />
+			<span class="ext-title" data-sbind="text: short_name"></span>
+			<i class="fa fa-flask" title="Development" alt="Development" data-sbind="visible: is_development"></i>
+			<i class="fa fa-gear" title="Options" alt="Options" data-sbind="visible: $parent.opts.showOptions() && optionsUrl() && !disabled(), click: $parent.launchOptions, clickBubble: false"></i>
+		</div>
 	</li>
 	<!-- /ko -->
 	<!-- ko if: isApp() -->
-	<li class="app" data-sbind="click: $parent.launchApp">
-		<img width="16px" height="16px" data-sbind="attr:{src:icon}"/> <span data-sbind="text: short_name"></span>
-		<i class="fa fa-flask" title="Development" alt="Development" data-sbind="visible: is_development"></i>
-		<i class="fa fa-gear" title="Options" alt="Options" data-sbind="visible: $parent.opts.showOptions() && optionsUrl() && !disabled(), click: $parent.launchOptions, clickBubble: false"></i>
+	<li class="app" data-sbind="click: $parent.launchApp, attr: {'data-extension-id': id()}">
+		<div class="ext-name">
+			<img width="16px" height="16px" data-sbind="attr:{src:icon}"/>
+			<span class="ext-title" data-sbind="text: short_name"></span>
+			<i class="fa fa-flask" title="Development" alt="Development" data-sbind="visible: is_development"></i>
+			<i class="fa fa-gear" title="Options" alt="Options" data-sbind="visible: $parent.opts.showOptions() && optionsUrl() && !disabled(), click: $parent.launchOptions, clickBubble: false"></i>
+		</div>
 	</li>
 	<!-- /ko -->
 </script>

@@ -136,24 +136,29 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     self.listedExtensions = ko.computed(function() {
-      // Sorted/Filtered list of extensions
+      // Sorted/Filtered list of extensions only (no apps)
       return _(self.exts.extensions()).chain()
-        .filter(filterFn)
+        .filter(function(ext) {
+          return filterFn(ext) && !ext.isApp();
+        })
         .sortBy(nameSortFn)
         .sortBy(statusSortFn)
-        .value()
+        .value();
     }).extend({countable: null});
 
     self.listedApps = ko.computed(function() {
-      // Sorted/Filtered list of apps
-      return _(self.exts.apps())
-        .filter(filterFn);
+      // Sorted/Filtered list of apps only
+      return _(self.exts.extensions()).chain()
+        .filter(function(ext) {
+          return filterFn(ext) && ext.isApp();
+        })
+        .sortBy(nameSortFn)
+        .value();
     }).extend({countable: null});
 
     self.listedItems = ko.computed(function() {
-      // Sorted/Filtered list of all items
-      return _(self.exts.items())
-        .filter(filterFn);
+      // Combined list for backward compatibility
+      return self.listedExtensions().concat(self.listedApps());
     }).extend({countable: null});
 
     self.listedProfiles = ko.computed(function() {
