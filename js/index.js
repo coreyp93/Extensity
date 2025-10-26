@@ -244,6 +244,138 @@ document.addEventListener("DOMContentLoaded", function() {
       });
 
     } catch(e) {}
+
+    // ------------------ UI helpers: resize & color controls ------------------
+    try {
+      var DEFAULT_SIZE = {w: 360, h: 520};
+
+      var applySavedSettings = function(settings) {
+        settings = settings || {};
+        if (settings.popupSize && settings.popupSize.w && settings.popupSize.h) {
+          document.documentElement.style.width = settings.popupSize.w + 'px';
+          document.documentElement.style.height = settings.popupSize.h + 'px';
+          document.body.style.width = settings.popupSize.w + 'px';
+          document.body.style.height = settings.popupSize.h + 'px';
+        }
+        if (settings.bgColor) {
+          document.body.style.backgroundColor = settings.bgColor;
+          document.documentElement.style.backgroundColor = settings.bgColor;
+        }
+        if (settings.fontColor) {
+          document.body.style.color = settings.fontColor;
+        }
+      };
+
+      // Load persisted settings
+      chrome.storage && chrome.storage.local && chrome.storage.local.get(['popupSize','bgColor','fontColor'], function(items) {
+        var s = {};
+        if (items && items.popupSize) s.popupSize = items.popupSize;
+        if (items && items.bgColor) s.bgColor = items.bgColor;
+        if (items && items.fontColor) s.fontColor = items.fontColor;
+        applySavedSettings(s);
+        // populate color inputs if present
+        try {
+          var bgInput = document.getElementById('bg-color');
+          var fInput = document.getElementById('font-color');
+          if (bgInput && items && items.bgColor) bgInput.value = items.bgColor;
+          if (fInput && items && items.fontColor) fInput.value = items.fontColor;
+        } catch(e) {}
+      });
+
+      // Resize handle
+      var handle = document.getElementById('resize-handle');
+      var isResizing = false;
+      var startX=0, startY=0, startW=0, startH=0;
+      var onMouseMove = function(e) {
+        if (!isResizing) return;
+        var clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
+        var clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY);
+        var dx = clientX - startX;
+        var dy = clientY - startY;
+        var newW = Math.max(280, Math.round(startW + dx));
+        var newH = Math.max(160, Math.round(startH + dy));
+        document.documentElement.style.width = newW + 'px';
+        document.body.style.width = newW + 'px';
+        document.documentElement.style.height = newH + 'px';
+        document.body.style.height = newH + 'px';
+      };
+      var onMouseUp = function(e) {
+        if (!isResizing) return;
+        isResizing = false;
+        // save size
+        try {
+          var w = parseInt(document.documentElement.style.width,10) || DEFAULT_SIZE.w;
+          var h = parseInt(document.documentElement.style.height,10) || DEFAULT_SIZE.h;
+          chrome.storage && chrome.storage.local && chrome.storage.local.set({popupSize:{w:w,h:h}});
+        } catch(e) {}
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('touchmove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('touchend', onMouseUp);
+      };
+      if (handle) {
+        handle.addEventListener('mousedown', function(e) {
+          isResizing = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          startW = parseInt(document.documentElement.style.width,10) || document.documentElement.clientWidth || DEFAULT_SIZE.w;
+          startH = parseInt(document.documentElement.style.height,10) || document.documentElement.clientHeight || DEFAULT_SIZE.h;
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+          e.preventDefault();
+        });
+        handle.addEventListener('touchstart', function(e) {
+          isResizing = true;
+          startX = e.touches[0].clientX;
+          startY = e.touches[0].clientY;
+          startW = parseInt(document.documentElement.style.width,10) || document.documentElement.clientWidth || DEFAULT_SIZE.w;
+          startH = parseInt(document.documentElement.style.height,10) || document.documentElement.clientHeight || DEFAULT_SIZE.h;
+          window.addEventListener('touchmove', onMouseMove);
+          window.addEventListener('touchend', onMouseUp);
+          e.preventDefault();
+        });
+      }
+
+      // Reset size button
+      var resetBtn = document.getElementById('reset-size');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          document.documentElement.style.width = DEFAULT_SIZE.w + 'px';
+          document.body.style.width = DEFAULT_SIZE.w + 'px';
+          document.documentElement.style.height = DEFAULT_SIZE.h + 'px';
+          document.body.style.height = DEFAULT_SIZE.h + 'px';
+          try { chrome.storage && chrome.storage.local && chrome.storage.local.set({popupSize:DEFAULT_SIZE}); } catch(e) {}
+        });
+      }
+
+      // Color panel toggle and inputs
+      var colorToggle = document.getElementById('color-controls');
+      var colorPanel = document.getElementById('color-panel');
+      var closeColor = document.getElementById('close-color-panel');
+      if (colorToggle && colorPanel) {
+        colorToggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          colorPanel.style.display = (colorPanel.style.display === 'none' || !colorPanel.style.display) ? 'block' : 'none';
+        });
+      }
+      if (closeColor && colorPanel) {
+        closeColor.addEventListener('click', function() { colorPanel.style.display = 'none'; });
+      }
+      var bgInput = document.getElementById('bg-color');
+      var fInput = document.getElementById('font-color');
+      var saveColor = function() {
+        try {
+          var bg = bgInput && bgInput.value ? bgInput.value : null;
+          var fc = fInput && fInput.value ? fInput.value : null;
+          if (bg) { document.body.style.backgroundColor = bg; document.documentElement.style.backgroundColor = bg; chrome.storage.local.set({bgColor:bg}); }
+          if (fc) { document.body.style.color = fc; chrome.storage.local.set({fontColor:fc}); }
+        } catch(e) {}
+      };
+      if (bgInput) bgInput.addEventListener('input', saveColor);
+      if (fInput) fInput.addEventListener('input', saveColor);
+
+    } catch(e) { /* non-fatal */ }
   });
 
   // Workaround for Chrome bug https://bugs.chromium.org/p/chromium/issues/detail?id=307912

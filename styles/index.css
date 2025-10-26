@@ -300,3 +300,47 @@ section p.empty i.fa {
 	font-size: 2em;
 	margin-bottom: 10px;
 }
+
+/* Ensure header buttons are on top and clickable */
+section#header { 
+	z-index: 50;
+	position: relative;
+}
+
+/* Cyan font color across the popup */
+body {
+	color: #00ffff !important;
+}
+
+/* Color panel */
+#color-panel {
+	position: absolute;
+	top: 36px;
+	right: 10px;
+	background: rgba(0,0,0,0.9);
+	color: #00ffff;
+	border: 1px solid rgba(255,255,255,0.08);
+	padding: 8px;
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+	z-index: 60;
+}
+
+/* Resize handle (small triangle) */
+#resize-handle {
+	position: absolute;
+	width: 18px;
+	height: 18px;
+	right: 2px;
+	bottom: 2px;
+	cursor: nwse-resize;
+	z-index: 60;
+	background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+	border-radius: 3px;
+	border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Make sure content area doesn't overlay header buttons */
+#content {
+	z-index: 10;
+}
