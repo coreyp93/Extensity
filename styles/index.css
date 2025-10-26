@@ -1,11 +1,15 @@
 body {
-	overflow-x:hidden;
-	overflow-y:auto;
+	overflow-x: hidden;
+	overflow-y: auto;
 	font-family: Lucida Grande, Arial, sans-serif;
 	font-size: 12px;
-	min-height: fit-content;
+	min-height: 100px;
+	max-height: 600px;
+	min-width: 300px;
+	width: auto;
 	user-select: none;
 	padding: 0px;
+	margin: 0px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -107,9 +111,10 @@ a {
 section.main {
 	float: left;
 	clear: both;
-	min-width:280px;
+	min-width: 280px;
 	padding: 0px 7px;
-	width: 95%;
+	width: calc(100% - 14px);
+	box-sizing: border-box;
 }
 
 section#header {
@@ -220,6 +225,11 @@ section#profiles i.fa {
 /* Content */
 section#content {
 	margin-bottom: .5em;
+	max-height: calc(100vh - 100px);
+	overflow-y: auto;
+	overflow-x: hidden;
+	display: block;
+	position: relative;
 }
 
 section#content h1 {
