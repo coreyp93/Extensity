@@ -175,35 +175,131 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     self.setProfile = function(p) {
-      // If stacking mode enabled, toggle membership in selectedProfiles
+      if (!p) return;
+
+      var ProfileState = function(name, extensions, enabled) {
+        this.name = name;
+        this.extensions = extensions;
+        this.enabled = enabled;
+        this.timestamp = Date.now();
+      };
+
       try {
         if (self.opts && self.opts.stackProfiles && self.opts.stackProfiles()) {
           var name = p.name();
-          var idx = self.selectedProfiles.indexOf(name);
-          if (idx === -1) {
+          var currentState = new ProfileState(
+            name,
+            p.items(),
+            self.selectedProfiles.indexOf(name) === -1
+          );
+
+          // Update selected profiles with animation
+          if (currentState.enabled) {
             self.selectedProfiles.push(name);
+            // Visual feedback
+            var profileEl = document.querySelector(`[data-profile="${name}"]`);
+            if (profileEl) {
+              profileEl.classList.add('profile-activated');
+              setTimeout(() => profileEl.classList.remove('profile-activated'), 500);
+            }
           } else {
-            self.selectedProfiles.splice(idx, 1);
+            self.selectedProfiles.remove(name);
+            // Visual feedback
+            var profileEl = document.querySelector(`[data-profile="${name}"]`);
+            if (profileEl) {
+              profileEl.classList.add('profile-deactivated');
+              setTimeout(() => profileEl.classList.remove('profile-deactivated'), 500);
+            }
           }
-          // apply union of all selected profiles (plus always on)
-          var chosen = _.union.apply(_, [self.profiles.always_on().items()].concat(
-            _(self.selectedProfiles()).map(function(n){ var pr = self.profiles.find(n); return pr ? pr.items() : []; })
+
+          // Calculate effective extensions (with always-on)
+          var effectiveExtensions = _.union.apply(_, [
+            self.profiles.always_on().items()
+          ].concat(
+            _(self.selectedProfiles()).map(function(n) {
+              var profile = self.profiles.find(n);
+              return profile ? profile.items() : [];
+            })
           ));
-          var to_enable = _.intersection(self.exts.disabled.pluck(), chosen);
-          var to_disable = _.difference(self.exts.enabled.pluck(), chosen);
-          _(to_enable).each(function(id) { try{ self.exts.find(id).enable() } catch(e){} });
-          _(to_disable).each(function(id) { try{ self.exts.find(id).disable() } catch(e){} });
+
+          // Determine changes needed
+          var to_enable = _.intersection(self.exts.disabled.pluck(), effectiveExtensions);
+          var to_disable = _.difference(self.exts.enabled.pluck(), effectiveExtensions);
+
+          // Apply changes with visual feedback
+          var applyChanges = function(extensionId, enable) {
+            var ext = self.exts.find(extensionId);
+            if (!ext) return;
+
+            // Visual feedback before state change
+            var extEl = document.querySelector(`[data-extension-id="${extensionId}"]`);
+            if (extEl) {
+              extEl.classList.add(enable ? 'enabling' : 'disabling');
+              setTimeout(() => extEl.classList.remove(enable ? 'enabling' : 'disabling'), 300);
+            }
+
+            // Apply state change
+            if (enable) {
+              ext.enable();
+            } else {
+              ext.disable();
+            }
+          };
+
+          // Apply changes with slight delay for visual feedback
+          to_enable.forEach((id, index) => {
+            setTimeout(() => applyChanges(id, true), index * 50);
+          });
+
+          to_disable.forEach((id, index) => {
+            setTimeout(() => applyChanges(id, false), index * 50);
+          });
+
+          // Update UI
+          self.updateProfilesUI();
           return;
         }
-      } catch(e) {}
-      // Fallback: single-select profile (original behavior)
+      } catch(e) {
+        console.warn('Profile stacking error:', e);
+      }
+
+      // Fallback: Enhanced single-select profile behavior
+      var prevProfile = self.activeProfile();
       self.activeProfile(p.name());
-      // Profile items, plus always-on items
+
+      // Visual feedback for profile switch
+      if (prevProfile) {
+        var prevEl = document.querySelector(`[data-profile="${prevProfile}"]`);
+        if (prevEl) prevEl.classList.add('profile-deactivated');
+      }
+      var newEl = document.querySelector(`[data-profile="${p.name()}"]`);
+      if (newEl) newEl.classList.add('profile-activated');
+
+      // Calculate and apply changes
       var ids = _.union(p.items(), self.profiles.always_on().items());
-      var to_enable = _.intersection(self.exts.disabled.pluck(),ids);
+      var to_enable = _.intersection(self.exts.disabled.pluck(), ids);
       var to_disable = _.difference(self.exts.enabled.pluck(), ids);
-      _(to_enable).each(function(id) { self.exts.find(id).enable() });
-      _(to_disable).each(function(id) { self.exts.find(id).disable() });
+
+      // Apply changes with visual feedback
+      to_enable.forEach((id, index) => {
+        setTimeout(() => {
+          var ext = self.exts.find(id);
+          var extEl = document.querySelector(`[data-extension-id="${id}"]`);
+          if (extEl) extEl.classList.add('enabling');
+          if (ext) ext.enable();
+          if (extEl) setTimeout(() => extEl.classList.remove('enabling'), 300);
+        }, index * 50);
+      });
+
+      to_disable.forEach((id, index) => {
+        setTimeout(() => {
+          var ext = self.exts.find(id);
+          var extEl = document.querySelector(`[data-extension-id="${id}"]`);
+          if (extEl) extEl.classList.add('disabling');
+          if (ext) ext.disable();
+          if (extEl) setTimeout(() => extEl.classList.remove('disabling'), 300);
+        }, index * 50);
+      });
     };
 
     self.unsetProfile = function() {
@@ -485,17 +581,9 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
       
-      // Initial size enforcement
-      try {
-        var w = parseInt(document.documentElement.style.width) || DEFAULT_SIZE.w;
-        var h = parseInt(document.documentElement.style.height) || DEFAULT_SIZE.h;
-        chrome.windows.getCurrent(function(win) {
-          chrome.windows.update(win.id, {
-            width: w + 16,
-            height: h + 40
-          });
-        });
-      } catch(e) {}
+      // Set static size, let content determine height
+      document.documentElement.style.width = DEFAULT_SIZE.w + 'px';
+      document.body.style.width = DEFAULT_SIZE.w + 'px';
 
       // Helpers: convert rgb() to hex for color input compatibility
       var rgbToHex = function(rgb) {
@@ -521,33 +609,82 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Function to update colors
       var updateColors = function(bgColor, fontColor) {
-        // Update background color
+        if (!bgColor && !fontColor) return;
+        
+        // Create style element for theme
+        var styleId = 'extensity-theme';
+        var styleEl = document.getElementById(styleId) || document.createElement('style');
+        styleEl.id = styleId;
+        
+        // Build comprehensive theme CSS
+        var css = [];
+        
         if (bgColor) {
-          document.body.style.backgroundColor = bgColor;
-          document.documentElement.style.backgroundColor = bgColor;
-          // Update all panels and content areas
-          document.querySelectorAll('.content, .panel, #header, #extensions-list, #options-list, #profiles-list').forEach(function(el) {
-            el.style.backgroundColor = bgColor;
-          });
-          // Update input elements background
-          document.querySelectorAll('input[type="text"]').forEach(function(input) {
-            input.style.backgroundColor = bgColor;
-          });
+          css.push(`
+            body, html { background-color: ${bgColor} !important; }
+            #content, #header, #search p, .panel,
+            #extensions-list li, #profiles-list li, #options-list li,
+            #search-history, input[type="text"] { background-color: ${bgColor} !important; }
+            #theme-panel button { background-color: ${bgColor}; }
+          `);
         }
-
-        // Update font color
+        
         if (fontColor) {
-          // Update main font color
-          document.body.style.color = fontColor;
-          // Apply to all text elements except specific brand colors
-          document.querySelectorAll('#extensions-list div, #profiles-list div, #options-list div, .name, .description, input[type="text"], button:not(.social)').forEach(function(el) {
-            el.style.color = fontColor;
+          css.push(`
+            body, #header a#title, #content li, 
+            #extensions-list li, #profiles-list li:not(.profile-disabled),
+            input[type="text"], button:not(.social):not(.theme-delete-btn),
+            .ext-name, .profile-name, .name, .description,
+            #search-history button, #content h1 { color: ${fontColor} !important; }
+            
+            #content li:hover {
+              background-color: ${adjustColor(bgColor || '#000000', 20)};
+              color: ${fontColor} !important;
+            }
+            
+            #content li.disabled {
+              opacity: 0.7;
+              color: ${adjustColor(fontColor, -30)} !important;
+            }
+          `);
+        }
+        
+        styleEl.textContent = css.join('\n');
+        if (!styleEl.parentNode) {
+          document.head.appendChild(styleEl);
+        }
+        
+        // Store colors
+        try {
+          chrome.storage.local.set({
+            themeColors: { bg: bgColor, font: fontColor }
           });
-          // Set color for extension names
-          document.querySelectorAll('.ext-name, .profile-name').forEach(function(el) {
-            el.style.color = fontColor;
-          });
-        }        // Save colors to storage
+        } catch(e) {}
+      };
+      
+      // Helper to adjust color brightness
+      function adjustColor(color, amount) {
+        try {
+          var usePound = false;
+          if (color[0] == "#") {
+            color = color.slice(1);
+            usePound = true;
+          }
+          
+          var num = parseInt(color, 16);
+          var r = (num >> 16) + amount;
+          var b = ((num >> 8) & 0x00FF) + amount;
+          var g = (num & 0x0000FF) + amount;
+          
+          r = Math.min(Math.max(0, r), 255);
+          b = Math.min(Math.max(0, b), 255);
+          g = Math.min(Math.max(0, g), 255);
+          
+          return (usePound?"#":"") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
+        } catch(e) {
+          return color;
+        }
+      }        // Save colors to storage
         try {
           var settings = {};
           if (bgColor) settings.bgColor = bgColor;
@@ -676,25 +813,45 @@ document.addEventListener("DOMContentLoaded", function() {
       };
       var applyGrid = function(enabled) {
         var root = document.documentElement;
+        var current = root.getAttribute('data-view-mode') || 'list';
+        var modes = ['list', 'columns', 'icons-large', 'icons-small'];
+        
         if (!enabled) {
-          root.classList.remove('grid', 'icon-only', 'dual-column');
+          // Reset to list view
+          root.setAttribute('data-view-mode', 'list');
+          root.classList.remove('grid', 'icons', 'columns', 'compact');
         } else {
-          // Toggle between dual-column and icon-only grid
-          if (root.classList.contains('grid') && root.classList.contains('dual-column')) {
-            root.classList.remove('dual-column');
-            root.classList.add('icon-only');
-          } else if (root.classList.contains('grid') && root.classList.contains('icon-only')) {
-            root.classList.remove('grid', 'icon-only');
-          } else {
-            root.classList.add('grid', 'dual-column');
+          // Cycle through view modes
+          var nextIndex = (modes.indexOf(current) + 1) % modes.length;
+          var nextMode = modes[nextIndex];
+          
+          root.setAttribute('data-view-mode', nextMode);
+          root.classList.remove('grid', 'icons', 'columns', 'compact');
+          
+          switch(nextMode) {
+            case 'columns':
+              root.classList.add('grid', 'columns');
+              break;
+            case 'icons-large':
+              root.classList.add('grid', 'icons');
+              break;
+            case 'icons-small':
+              root.classList.add('grid', 'icons', 'compact');
+              break;
           }
         }
+        
+        // Save state
         try { 
           chrome.storage.local.set({
-            gridView: root.classList.contains('grid'),
-            gridMode: root.classList.contains('icon-only') ? 'icon-only' : 'dual-column'
+            viewMode: root.getAttribute('data-view-mode')
           }); 
         } catch(e){}
+        
+        // Trigger layout optimization
+        setTimeout(function() {
+          window.dispatchEvent(new Event('resize'));
+        }, 50);
       };
       if (compactToggle) {
         compactToggle.addEventListener('click', function(e) { e.preventDefault(); applyCompact(!document.body.classList.contains('compact')); });
