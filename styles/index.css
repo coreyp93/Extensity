@@ -1,15 +1,15 @@
 body {
-	overflow-x: hidden;
-	overflow-y: auto;
+	overflow: hidden;
 	font-family: Lucida Grande, Arial, sans-serif;
 	font-size: 12px;
-	min-height: 100px;
-	max-height: 600px;
-	min-width: 300px;
-	width: auto;
+	width: 350px;
+	height: 500px;
 	user-select: none;
-	padding: 0px;
-	margin: 0px;
+	padding: 0;
+	margin: 0;
+	position: relative;
+	display: flex;
+	flex-direction: column;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -109,12 +109,10 @@ a {
 }
 
 section.main {
-	float: left;
-	clear: both;
-	min-width: 280px;
-	padding: 0px 7px;
-	width: calc(100% - 14px);
+	width: 100%;
+	padding: 0 7px;
 	box-sizing: border-box;
+	flex-shrink: 0;
 }
 
 section#header {
@@ -225,11 +223,11 @@ section#profiles i.fa {
 /* Content */
 section#content {
 	margin-bottom: .5em;
-	max-height: calc(100vh - 100px);
+	flex: 1;
 	overflow-y: auto;
 	overflow-x: hidden;
-	display: block;
 	position: relative;
+	height: calc(100% - 60px);
 }
 
 section#content h1 {
