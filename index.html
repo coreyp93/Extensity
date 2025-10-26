@@ -56,9 +56,13 @@
 
 	<!-- Profiles -->
 	<section id="profiles" data-sbind="if: listedProfiles.any, visible: !search.q">
-		<h1>Profiles</h1>
+		<h1 style="display:flex;align-items:center;justify-content:space-between;">
+			<span>Profiles</span>
+			<span id="profile-stack-legend" style="font-size:0.95em; font-weight:400; color:#aaa; margin-left:10px;"></span>
+		</h1>
 		<ul data-sbind="foreach: listedProfiles">
-			<li class="app" data-sbind="click: $parent.setProfile">
+			<li class="app profile-list-item" data-sbind="click: $parent.setProfile">
+				<input type="checkbox" class="profile-stack-checkbox" style="margin-right:7px;vertical-align:middle;" data-sbind="checked: $parent.selectedProfiles() && $parent.selectedProfiles.indexOf(name()) !== -1, visible: $parent.opts.stackProfiles && $parent.opts.stackProfiles()" onclick="event.stopPropagation();">
 				<i class="fa fa-check" alt="active" data-sbind="visible: name() == $parent.activeProfile()"></i>
 				<i class="fa fa-lightbulb-o" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && name()=='__always_on'"></i>
 				<i class="fa fa-star" alt="profile" data-sbind="visible: name()!=$parent.activeProfile() && name()=='__favorites'"></i>
@@ -107,14 +111,24 @@
 <!-- Workaround for Chrome bug https://bugs.chromium.org/p/chromium/issues/detail?id=307912 -->
 <div id="workaround-307912" style="display: none; height: 1px;"></div>
 
-<!-- Color control panel -->
-<div id="color-panel" style="display:none;">
-	<label style="display:block; margin:6px 0;">Background: <input type="color" id="bg-color" value="#000000" /></label>
-	<label style="display:block; margin:6px 0;">Font: <input type="color" id="font-color" value="#00ffff" /></label>
-	<div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
-		<button id="save-theme">Save Theme</button>
-		<button id="reset-colors">Reset Colors</button>
-		<button id="close-color-panel">Close</button>
+
+<!-- Modern Theme Panel -->
+<div id="theme-panel" style="display:none; position:absolute; top:46px; right:10px; min-width:260px; background:rgba(20,20,30,0.98); color:#fff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.25); z-index:1000; padding:18px 18px 12px 18px;">
+	<div style="font-weight:600; font-size:1.1em; margin-bottom:10px; letter-spacing:0.5px;">Theme Manager</div>
+	<div style="margin-bottom:10px;">
+		<label style="display:block; margin:6px 0;">Background: <input type="color" id="bg-color" value="#000000" style="margin-left:8px;" /></label>
+		<label style="display:block; margin:6px 0;">Font: <input type="color" id="font-color" value="#00ffff" style="margin-left:8px;" /></label>
+		<div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+			<button id="save-theme" style="flex:1;">Save Theme</button>
+			<button id="reset-colors" style="flex:1;">Reset</button>
+		</div>
+	</div>
+	<div id="theme-list-panel" style="margin-bottom:10px;">
+		<div style="font-size:0.98em; font-weight:500; margin-bottom:4px;">Saved Themes</div>
+		<div id="theme-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+	</div>
+	<div style="text-align:right; margin-top:2px;">
+		<button id="close-theme-panel" style="padding:2px 12px;">Close</button>
 	</div>
 </div>
 

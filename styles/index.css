@@ -1,3 +1,72 @@
+/* Modern theme panel */
+#theme-panel {
+	font-family: inherit;
+	background: rgba(20,20,30,0.98);
+	color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+	z-index: 1000;
+	padding: 18px 18px 12px 18px;
+	min-width: 260px;
+	max-width: 340px;
+	transition: background 0.2s, color 0.2s;
+}
+
+#theme-list-panel {
+	margin-bottom: 10px;
+}
+#theme-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.theme-btn {
+	border: none;
+	border-radius: 5px;
+	padding: 4px 12px;
+	font-size: 0.98em;
+	background: #222;
+	color: #fff;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+}
+.theme-btn:hover {
+	background: #444;
+}
+.theme-delete-btn {
+	background: #a33;
+	color: #fff;
+	margin-left: 2px;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 0.95em;
+}
+.theme-delete-btn:hover {
+	background: #d44;
+}
+
+/* Profile stacking checkboxes and legend */
+.profile-list-item {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 2px;
+	border-radius: 4px;
+	transition: background 0.15s;
+}
+.profile-list-item.selected {
+	background: #1a2a3a;
+}
+.profile-stack-checkbox {
+	accent-color: #00bfff;
+	width: 16px;
+	height: 16px;
+}
+#profile-stack-legend {
+	font-size: 0.95em;
+	color: #00bfff;
+	font-weight: 500;
+}
 html, body {
 	width: 540px; /* 50% wider by default */
 	height: 520px;
@@ -11,7 +80,6 @@ body {
 	font-family: Lucida Grande, Arial, sans-serif;
 	font-size: 12px;
 	user-select: none;
-	min-width: 350px;
 	min-width: 540px;
 	min-height: 320px;
 	position: absolute;
@@ -305,14 +373,11 @@ section p.empty i.fa {
 
 /* Ensure header buttons are on top and clickable */
 section#header { 
-	z-index: 50;
+	z-index: 200;
 	position: relative;
 }
 
-/* Cyan font color across the popup */
-body {
-	color: #00ffff !important;
-}
+/* No forced global color - theming will apply at runtime */
 
 /* Color panel */
 #color-panel {
@@ -344,7 +409,7 @@ body {
 	height: 6px;
 	left: 6px;
 	right: 6px;
-	top: 0;
+	top: 46px; /* keep resize area below header */
 	cursor: ns-resize;
 }
 
@@ -378,13 +443,13 @@ body {
 }
 
 .resize-handle.corner-tl {
-	top: 0;
+	top: 46px; /* avoid covering header */
 	left: 0;
 	cursor: nw-resize;
 }
 
 .resize-handle.corner-tr {
-	top: 0;
+	top: 46px; /* avoid covering header */
 	right: 0;
 	cursor: ne-resize;
 }

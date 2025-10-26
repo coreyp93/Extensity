@@ -1,3 +1,41 @@
+      // --- Profile stacking logic (modern UX) ---
+      // Checkbox elements for stacking
+      var stackingCheckboxes = document.querySelectorAll('.profile-stack-checkbox');
+      var stackingLegend = document.getElementById('profile-stack-legend');
+      var stackedProfiles = [];
+
+      function updateStackingLegend() {
+        if (!stackingLegend) return;
+        if (stackedProfiles.length === 0) {
+          stackingLegend.textContent = 'No profiles stacked.';
+        } else {
+          stackingLegend.textContent = 'Stacked: ' + stackedProfiles.join(', ');
+        }
+      }
+
+      function handleStackingChange() {
+        stackedProfiles = [];
+        stackingCheckboxes.forEach(function(cb) {
+          if (cb.checked) stackedProfiles.push(cb.value || cb.getAttribute('data-name') || '');
+        });
+        updateStackingLegend();
+        // TODO: Implement actual stacking logic (union of extensions, etc.)
+        // For now, just visual feedback
+      }
+
+      stackingCheckboxes.forEach(function(cb) {
+        cb.addEventListener('change', handleStackingChange);
+      });
+      updateStackingLegend();
+
+      // Hide theme panel when clicking outside (modern UX)
+      document.addEventListener('mousedown', function(e) {
+        if (themePanel && themePanel.style.display === 'block') {
+          if (!themePanel.contains(e.target) && e.target !== themeToggle) {
+            themePanel.style.display = 'none';
+          }
+        }
+      });
 document.addEventListener("DOMContentLoaded", function() {
 
   var SearchViewModel = function() {
@@ -195,11 +233,13 @@ document.addEventListener("DOMContentLoaded", function() {
   };
 
   _.defer(function() {
-    // Force initial size before anything loads
-    document.documentElement.style.height = '520px';
-    document.documentElement.style.minHeight = '520px';
-    document.body.style.height = '520px';
-    document.body.style.minHeight = '520px';
+  // Force initial size before anything loads
+  document.documentElement.style.width = '540px';
+  document.documentElement.style.height = '520px';
+  document.documentElement.style.minHeight = '520px';
+  document.body.style.width = '540px';
+  document.body.style.height = '520px';
+  document.body.style.minHeight = '520px';
 
     vm = new ExtensityViewModel();
     ko.bindingProvider.instance = new ko.secureBindingsProvider({});
@@ -212,13 +252,15 @@ document.addEventListener("DOMContentLoaded", function() {
     var forcePopupHeight = function() {
       try {
         var desiredHeight = 520; // px - tuned to fit typical lists
-        var desiredWidth = 360;
+        var desiredWidth = 540; // tuned to new default width
         document.documentElement.style.height = desiredHeight + 'px';
         document.body.style.height = desiredHeight + 'px';
         document.documentElement.style.minHeight = desiredHeight + 'px';
         document.body.style.minHeight = desiredHeight + 'px';
         document.documentElement.style.maxHeight = desiredHeight + 'px';
         document.body.style.maxHeight = desiredHeight + 'px';
+        document.documentElement.style.width = desiredWidth + 'px';
+        document.body.style.width = desiredWidth + 'px';
         // Try window.resizeTo (may be ignored by some Chromium builds)
         if (typeof window.resizeTo === 'function') {
           try { window.resizeTo(desiredWidth, desiredHeight); } catch(e) {}
@@ -274,6 +316,18 @@ document.addEventListener("DOMContentLoaded", function() {
   var DEFAULT_SIZE = {w: 540, h: 520}; // increased default width by 50%
   var MIN_WIDTH = 280, MIN_HEIGHT = 160;
 
+      // Helpers: convert rgb() to hex for color input compatibility
+      var rgbToHex = function(rgb) {
+        if (!rgb) return '#000000';
+        var m = (''+rgb).match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+        if (!m) return rgb; // maybe already hex
+        var r = parseInt(m[1],10), g = parseInt(m[2],10), b = parseInt(m[3],10);
+        var hex = '#' + [r,g,b].map(function(x){
+          var s = x.toString(16); return (s.length==1) ? '0'+s : s;
+        }).join('');
+        return hex;
+      };
+
       var applySavedSettings = function(settings) {
         settings = settings || {};
         if (settings.popupSize && settings.popupSize.w && settings.popupSize.h) {
@@ -302,8 +356,8 @@ document.addEventListener("DOMContentLoaded", function() {
         try {
           var bgInput = document.getElementById('bg-color');
           var fInput = document.getElementById('font-color');
-          if (bgInput && items && items.bgColor) bgInput.value = items.bgColor;
-          if (fInput && items && items.fontColor) fInput.value = items.fontColor;
+          if (bgInput && items && items.bgColor) bgInput.value = rgbToHex(items.bgColor);
+          if (fInput && items && items.fontColor) fInput.value = rgbToHex(items.fontColor);
         } catch(e) {}
       });
 
@@ -431,12 +485,15 @@ document.addEventListener("DOMContentLoaded", function() {
         return hex;
       };
 
-      // Color panel functionality
-      var colorToggle = document.getElementById('color-controls');
-      var colorPanel = document.getElementById('color-panel');
-      var closeColor = document.getElementById('close-color-panel');
-      var bgInput = document.getElementById('bg-color');
-      var fInput = document.getElementById('font-color');
+  // Modern theme panel functionality
+  var themeToggle = document.getElementById('color-controls');
+  var themePanel = document.getElementById('theme-panel');
+  var closeTheme = document.getElementById('close-theme-panel');
+  var bgInput = document.getElementById('bg-color');
+  var fInput = document.getElementById('font-color');
+  var saveThemeBtn = document.getElementById('save-theme');
+  var resetColorsBtn = document.getElementById('reset-colors');
+  var themeListDiv = document.getElementById('theme-list');
 
   // Function to update colors
       var updateColors = function(bgColor, fontColor) {
@@ -454,14 +511,11 @@ document.addEventListener("DOMContentLoaded", function() {
         if (fontColor) {
           // Update main font color
           document.body.style.color = fontColor;
-          // Update links and icons
-          document.querySelectorAll('a, .fa').forEach(function(el) {
-            if (!el.classList.contains('fa-facebook-official') && 
-                !el.classList.contains('fa-twitter') && 
-                !el.classList.contains('fa-star')) {
-              el.style.color = fontColor;
-            }
-          });
+          // Update title in header to match font color (keep social icons' brand colors)
+          try {
+            var titleEl = document.getElementById('title');
+            if (titleEl) titleEl.style.color = fontColor;
+          } catch(e) {}
           // Update input text color
           document.querySelectorAll('input[type="text"]').forEach(function(input) {
             input.style.color = fontColor;
@@ -479,12 +533,12 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       };
 
-      // Color panel toggle
-      if (colorToggle && colorPanel) {
-        colorToggle.addEventListener('click', function(e) {
+      // Theme panel toggle
+      if (themeToggle && themePanel) {
+        themeToggle.addEventListener('click', function(e) {
           e.preventDefault();
-          if (colorPanel.style.display === 'none' || !colorPanel.style.display) {
-            colorPanel.style.display = 'block';
+          if (themePanel.style.display === 'none' || !themePanel.style.display) {
+            themePanel.style.display = 'block';
             // Update color inputs with current values (convert rgb to hex)
             try {
               var bodyBg = getComputedStyle(document.body).backgroundColor;
@@ -492,16 +546,14 @@ document.addEventListener("DOMContentLoaded", function() {
               if (bgInput) bgInput.value = rgbToHex(bodyBg);
               if (fInput) fInput.value = rgbToHex(bodyColor);
             } catch(e) {}
+            renderThemeList();
           } else {
-            colorPanel.style.display = 'none';
+            themePanel.style.display = 'none';
           }
         });
       }
-
-      if (closeColor && colorPanel) {
-        closeColor.addEventListener('click', function() { 
-          colorPanel.style.display = 'none'; 
-        });
+      if (closeTheme && themePanel) {
+        closeTheme.addEventListener('click', function() { themePanel.style.display = 'none'; });
       }
 
       // Color input handlers
@@ -517,8 +569,8 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
+
       // Reset colors button
-      var resetColorsBtn = document.getElementById('reset-colors');
       if (resetColorsBtn) {
         resetColorsBtn.addEventListener('click', function() {
           var defBg = '#000000', defFont = '#00ffff';
@@ -528,8 +580,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
-      // Save theme button (simple save into local storage as presets)
-      var saveThemeBtn = document.getElementById('save-theme');
+      // Save theme button (modern panel)
       if (saveThemeBtn) {
         saveThemeBtn.addEventListener('click', function() {
           var name = prompt('Theme name:');
@@ -537,11 +588,51 @@ document.addEventListener("DOMContentLoaded", function() {
           try {
             chrome.storage.local.get('themes', function(obj) {
               var themes = obj.themes || {};
-              themes[name] = {bg: (bgInput && bgInput.value) || getComputedStyle(document.body).backgroundColor, font: (fInput && fInput.value) || getComputedStyle(document.body).color};
-              chrome.storage.local.set({themes: themes});
-              alert('Theme saved: ' + name);
+              var storedBg = (bgInput && bgInput.value) ? bgInput.value : rgbToHex(getComputedStyle(document.body).backgroundColor);
+              var storedFont = (fInput && fInput.value) ? fInput.value : rgbToHex(getComputedStyle(document.body).color);
+              themes[name] = {bg: storedBg, font: storedFont};
+              chrome.storage.local.set({themes: themes}, renderThemeList);
             });
           } catch(e) {}
+        });
+      }
+
+      // Render theme list in the panel
+      function renderThemeList() {
+        if (!themeListDiv) return;
+        themeListDiv.innerHTML = '';
+        chrome.storage.local.get('themes', function(obj) {
+          var themes = obj.themes || {};
+          Object.keys(themes).forEach(function(name) {
+            var t = themes[name];
+            var btn = document.createElement('button');
+            btn.className = 'theme-btn';
+            btn.textContent = name;
+            btn.title = 'Apply theme';
+            btn.style.background = t.bg;
+            btn.style.color = t.font;
+            btn.addEventListener('click', function() {
+              if (bgInput) bgInput.value = t.bg;
+              if (fInput) fInput.value = t.font;
+              updateColors(t.bg, t.font);
+            });
+            var del = document.createElement('button');
+            del.className = 'theme-delete-btn';
+            del.textContent = '×';
+            del.title = 'Delete theme';
+            del.addEventListener('click', function(ev) {
+              ev.stopPropagation();
+              chrome.storage.local.get('themes', function(obj2) {
+                var t2 = obj2.themes || {};
+                delete t2[name];
+                chrome.storage.local.set({themes: t2}, renderThemeList);
+              });
+            });
+            var wrap = document.createElement('span');
+            wrap.appendChild(btn);
+            wrap.appendChild(del);
+            themeListDiv.appendChild(wrap);
+          });
         });
       }
 
@@ -579,7 +670,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Search history (simple recent terms)
       var searchEl = document.querySelector('#search input');
-      var historyEl = document.createElement('div'); historyEl.id = 'search-history'; historyEl.style.padding = '4px 6px'; historyEl.style.fontSize = '11px';
+  var historyEl = document.createElement('div'); historyEl.id = 'search-history'; historyEl.style.padding = '4px 6px'; historyEl.style.fontSize = '11px'; historyEl.style.position = 'relative'; historyEl.style.zIndex = '210';
       var clearHistBtn = document.createElement('button'); clearHistBtn.textContent = 'Clear'; clearHistBtn.style.marginLeft='6px';
       historyEl.appendChild(clearHistBtn);
       var historyList = document.createElement('div'); historyList.id = 'search-history-list'; historyList.style.marginTop='6px'; historyEl.appendChild(historyList);

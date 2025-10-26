@@ -15,57 +15,43 @@ function boolean(value) {
     return Boolean(value);
 };
 
-// Boolean value from localStorage with a default
-function b(idx, def) {
-  return boolean(localStorage[idx] || def);
-};
+
+// Boolean value from chrome.storage.local with a default (async)
+function b(idx, def, cb) {
+  chrome.storage.local.get(idx, function(obj) {
+    if (typeof obj[idx] !== 'undefined') cb(boolean(obj[idx]));
+    else cb(boolean(def));
+  });
+}
+
 
 function migrate_to_chrome_storage() {
   chrome.storage.sync.get("migration", function(v) {
-    // console.log(v);
-    // Only migrate if another migration hasn't been done in a different computer.
     if(v["migration"]) {
       console.log("Migration from localStorage already happened in another computer");
-    }
-    else {
+    } else {
       console.log("Migrate localStorage data to Chrome Storage Sync");
-
-      // Don't migrate toggles as they're just a temporary per-session value.
-      // // Backwards compatibility -- restore old toggled-off format if the new one fails.
-      // // Keeping this for a while until everyone upgrades.
-      // try {
-      //   // New version -- stringified array
-      //   var toggled = JSON.parse(localStorage["toggled"] || "[]");
-      // } catch(e) {
-      //   // Old version -- comma-separated values.
-      //   var toggled = (localStorage['toggled'] || "").split(",").filter(function(e){return e;})
-      // }
-
-      var data = {
-        dismissals:   JSON.parse(localStorage['dismissals'] || "[]"),
-        profiles:     JSON.parse(localStorage['profiles'] || "{}"),
-        // toggled:      toggled,
-        showHeader:   b('showHeader'   , true),
-        groupApps:    b('groupApps'    , true),
-        appsFirst:    b('appsFirst'    , false),
-        enabledFirst: b('enabledFirst' , false),
-        searchBox:    b('searchBox'    , true),
-        migration:    "1.4.0"
-      };
-      chrome.storage.sync.set(data, function() {
-        // Remove localStorage settings when done.
-        localStorage.removeItem('dismissals');
-        localStorage.removeItem('profiles');
-        localStorage.removeItem('toggled');
-        localStorage.removeItem('showHeader');
-        localStorage.removeItem('groupApps');
-        localStorage.removeItem('appsFirst');
-        localStorage.removeItem('enabledFirst');
-        localStorage.removeItem('searchBox');
+      // Read all keys from chrome.storage.local
+      chrome.storage.local.get(['dismissals','profiles','toggled','showHeader','groupApps','appsFirst','enabledFirst','searchBox'], function(localData) {
+        var data = {
+          dismissals:   localData['dismissals'] ? JSON.parse(localData['dismissals']) : [],
+          profiles:     localData['profiles'] ? JSON.parse(localData['profiles']) : {},
+          // toggled:      toggled,
+          showHeader:   boolean(localData['showHeader'] || true),
+          groupApps:    boolean(localData['groupApps'] || true),
+          appsFirst:    boolean(localData['appsFirst'] || false),
+          enabledFirst: boolean(localData['enabledFirst'] || false),
+          searchBox:    boolean(localData['searchBox'] || true),
+          migration:    "1.4.0"
+        };
+        chrome.storage.sync.set(data, function() {
+          // Remove migrated settings from chrome.storage.local
+          chrome.storage.local.remove(['dismissals','profiles','toggled','showHeader','groupApps','appsFirst','enabledFirst','searchBox']);
+        });
       });
     }
   });
-};
+}
 
 // Listeners for the event page.
 chrome.runtime.onInstalled.addListener(function(details) {
