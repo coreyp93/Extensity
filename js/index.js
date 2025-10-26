@@ -174,6 +174,57 @@ document.addEventListener("DOMContentLoaded", function() {
     vm = new ExtensityViewModel();
     ko.bindingProvider.instance = new ko.secureBindingsProvider({});
     ko.applyBindings(vm, document.body);
+
+    // Force a stable popup height after the initial list is rendered and
+    // whenever the listed collections change. Vivaldi sometimes collapses the
+    // popup when large dynamic lists are inserted; applying an explicit
+    // computed/document height helps keep the popup usable.
+    var forcePopupHeight = function() {
+      try {
+        var desiredHeight = 520; // px - tuned to fit typical lists
+        var desiredWidth = 360;
+        document.documentElement.style.height = desiredHeight + 'px';
+        document.body.style.height = desiredHeight + 'px';
+        document.documentElement.style.minHeight = desiredHeight + 'px';
+        document.body.style.minHeight = desiredHeight + 'px';
+        document.documentElement.style.maxHeight = desiredHeight + 'px';
+        document.body.style.maxHeight = desiredHeight + 'px';
+        // Try window.resizeTo (may be ignored by some Chromium builds)
+        if (typeof window.resizeTo === 'function') {
+          try { window.resizeTo(desiredWidth, desiredHeight); } catch(e) {}
+        }
+      } catch(e) { /* swallow errors */ }
+    };
+
+    // Apply shortly after render
+    setTimeout(forcePopupHeight, 50);
+
+    // Re-apply when lists change
+    var safeSubscribe = function(observable) {
+      try {
+        if (observable && typeof observable.subscribe === 'function') {
+          observable.subscribe(function() {
+            setTimeout(forcePopupHeight, 20);
+          });
+        }
+      } catch(e) {}
+    };
+
+    safeSubscribe(vm.listedExtensions);
+    safeSubscribe(vm.listedApps);
+    safeSubscribe(vm.listedItems);
+
+    // Also react to window focus/visibility changes and briefly during initial
+    // open to avoid transient reflow issues in Vivaldi.
+    try {
+      window.addEventListener('focus', forcePopupHeight);
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') forcePopupHeight();
+      });
+      // Run a short burst of fixes right after open to cover async image loads
+      var burst = setInterval(forcePopupHeight, 200);
+      setTimeout(function() { clearInterval(burst); }, 1200);
+    } catch(e) {}
   });
 
   // Workaround for Chrome bug https://bugs.chromium.org/p/chromium/issues/detail?id=307912

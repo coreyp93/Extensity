@@ -14,6 +14,7 @@
 <script type="text/javascript" src="js/index.js"></script>
 </head>
 <body>
+<div id="popup-container">
 <section id="header" class="main" data-sbind="if: opts.showHeader">
 	<h1>
 		<a id="title" href="https://chrome.google.com/webstore/detail/jjmflmamggggndanpgfnpelongoepncg" target="_blank"><img src="images/icon48.png" width="16px" height="16px" />&nbsp;Extensity</a>
@@ -89,6 +90,8 @@
 	</section>
 </section>
 
+<!-- Workaround for Chrome bug https://bugs.chromium.org/p/chromium/issues/detail?id=307912 -->
+</div>
 <!-- Workaround for Chrome bug https://bugs.chromium.org/p/chromium/issues/detail?id=307912 -->
 <div id="workaround-307912" style="display: none; height: 1px;"></div>
 

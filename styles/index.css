@@ -1,15 +1,22 @@
-body {
-	overflow: hidden;
-	font-family: Lucida Grande, Arial, sans-serif;
-	font-size: 12px;
+html, body {
 	width: 350px;
 	height: 500px;
-	user-select: none;
-	padding: 0;
 	margin: 0;
-	position: relative;
-	display: flex;
-	flex-direction: column;
+	padding: 0;
+}
+
+body {
+	font-family: Lucida Grande, Arial, sans-serif;
+	font-size: 12px;
+	user-select: none;
+	min-width: 350px;
+	min-height: 500px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: block;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -109,10 +116,11 @@ a {
 }
 
 section.main {
+	position: relative;
 	width: 100%;
 	padding: 0 7px;
 	box-sizing: border-box;
-	flex-shrink: 0;
+	background: inherit;
 }
 
 section#header {
@@ -223,11 +231,14 @@ section#profiles i.fa {
 /* Content */
 section#content {
 	margin-bottom: .5em;
-	flex: 1;
-	overflow-y: auto;
+	position: absolute;
+	top: 60px;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	overflow-y: scroll;
 	overflow-x: hidden;
-	position: relative;
-	height: calc(100% - 60px);
+	-webkit-overflow-scrolling: touch;
 }
 
 section#content h1 {
