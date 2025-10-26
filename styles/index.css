@@ -479,11 +479,92 @@ body.compact section.main {
 	display: flex;
 	flex-wrap: wrap;
 }
+
+/* Dual column mode (default grid) */
 .grid #content ul li {
 	width: 48%;
 	box-sizing: border-box;
 	margin: 4px 1%;
 	display: inline-block;
+}
+
+/* Icon grid mode */
+.grid.icon-only #content ul li {
+	width: 25%;
+	padding: 12px 8px;
+	text-align: center;
+	margin: 0;
+}
+
+.grid.icon-only #content ul li img {
+	width: 48px;
+	height: 48px;
+	display: block;
+	margin: 0 auto 8px;
+}
+
+.grid.icon-only #content ul li .ext-name {
+	font-size: 0;
+}
+
+/* Compact grid modes */
+.grid.compact.dual-column #content ul li {
+	padding: 2px 4px;
+	margin: 2px 1%;
+}
+
+.grid.compact.icon-only #content ul li {
+	width: 16.666%;
+	padding: 8px 4px;
+}
+
+.grid.compact.icon-only #content ul li img {
+	width: 32px;
+	height: 32px;
+}
+
+/* Profile section interactivity fix */
+section#content ul li.profile {
+	cursor: pointer;
+	z-index: 100;
+	position: relative;
+}
+
+section#content ul li.profile:hover {
+	background-color: rgba(128,128,128,0.2);
+}
+
+/* Search history dropdown fix */
+#search-history {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	width: 100%;
+	background: inherit;
+	border: 1px solid rgba(128,128,128,0.2);
+	border-top: none;
+	z-index: 150;
+	box-sizing: border-box;
+}
+
+#search-history-list {
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+#search-history-list button {
+	display: inline-block;
+	margin: 2px;
+	padding: 2px 8px;
+	background: rgba(128,128,128,0.1);
+	border: 1px solid rgba(128,128,128,0.2);
+	border-radius: 3px;
+	color: inherit;
+	cursor: pointer;
+}
+
+#search-history-list button:hover {
+	background: rgba(128,128,128,0.2);
 }
 
 /* Make sure content area doesn't overlay header buttons */

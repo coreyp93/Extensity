@@ -457,21 +457,45 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       };
 
-      // Setup all resize handles
-      document.querySelectorAll('.resize-handle').forEach(setupResizeHandle);
-
+      // Setup all resize handles with improved tracking
+      var handles = document.querySelectorAll('.resize-handle');
+      handles.forEach(setupResizeHandle);
+      
       // Reset size button
       var resetBtn = document.getElementById('reset-size');
       if (resetBtn) {
         resetBtn.addEventListener('click', function(e) {
           e.preventDefault();
           document.documentElement.style.width = DEFAULT_SIZE.w + 'px';
-          document.body.style.width = DEFAULT_SIZE.w + 'px';
           document.documentElement.style.height = DEFAULT_SIZE.h + 'px';
+          document.body.style.width = DEFAULT_SIZE.w + 'px';
           document.body.style.height = DEFAULT_SIZE.h + 'px';
-          try { chrome.storage && chrome.storage.local && chrome.storage.local.set({popupSize:DEFAULT_SIZE}); } catch(e) {}
+          try {
+            chrome.runtime.getPlatformInfo(function(info) {
+              // Force popup resize on all platforms
+              chrome.windows.getCurrent(function(win) {
+                chrome.windows.update(win.id, {
+                  width: DEFAULT_SIZE.w + 16, // account for window chrome
+                  height: DEFAULT_SIZE.h + 40
+                });
+              });
+              chrome.storage.local.set({popupSize:DEFAULT_SIZE});
+            });
+          } catch(e) {}
         });
       }
+      
+      // Initial size enforcement
+      try {
+        var w = parseInt(document.documentElement.style.width) || DEFAULT_SIZE.w;
+        var h = parseInt(document.documentElement.style.height) || DEFAULT_SIZE.h;
+        chrome.windows.getCurrent(function(win) {
+          chrome.windows.update(win.id, {
+            width: w + 16,
+            height: h + 40
+          });
+        });
+      } catch(e) {}
 
       // Helpers: convert rgb() to hex for color input compatibility
       var rgbToHex = function(rgb) {
@@ -495,12 +519,16 @@ document.addEventListener("DOMContentLoaded", function() {
   var resetColorsBtn = document.getElementById('reset-colors');
   var themeListDiv = document.getElementById('theme-list');
 
-  // Function to update colors
+      // Function to update colors
       var updateColors = function(bgColor, fontColor) {
         // Update background color
         if (bgColor) {
           document.body.style.backgroundColor = bgColor;
           document.documentElement.style.backgroundColor = bgColor;
+          // Update all panels and content areas
+          document.querySelectorAll('.content, .panel, #header, #extensions-list, #options-list, #profiles-list').forEach(function(el) {
+            el.style.backgroundColor = bgColor;
+          });
           // Update input elements background
           document.querySelectorAll('input[type="text"]').forEach(function(input) {
             input.style.backgroundColor = bgColor;
@@ -511,18 +539,15 @@ document.addEventListener("DOMContentLoaded", function() {
         if (fontColor) {
           // Update main font color
           document.body.style.color = fontColor;
-          // Update title in header to match font color (keep social icons' brand colors)
-          try {
-            var titleEl = document.getElementById('title');
-            if (titleEl) titleEl.style.color = fontColor;
-          } catch(e) {}
-          // Update input text color
-          document.querySelectorAll('input[type="text"]').forEach(function(input) {
-            input.style.color = fontColor;
+          // Apply to all text elements except specific brand colors
+          document.querySelectorAll('#extensions-list div, #profiles-list div, #options-list div, .name, .description, input[type="text"], button:not(.social)').forEach(function(el) {
+            el.style.color = fontColor;
           });
-        }
-
-        // Save colors to storage
+          // Set color for extension names
+          document.querySelectorAll('.ext-name, .profile-name').forEach(function(el) {
+            el.style.color = fontColor;
+          });
+        }        // Save colors to storage
         try {
           var settings = {};
           if (bgColor) settings.bgColor = bgColor;
@@ -650,8 +675,26 @@ document.addEventListener("DOMContentLoaded", function() {
         try { chrome.storage && chrome.storage.local && chrome.storage.local.set({compactMode: !!enabled}); } catch(e){}
       };
       var applyGrid = function(enabled) {
-        document.documentElement.classList.toggle('grid', !!enabled);
-        try { chrome.storage && chrome.storage.local && chrome.storage.local.set({gridView: !!enabled}); } catch(e){}
+        var root = document.documentElement;
+        if (!enabled) {
+          root.classList.remove('grid', 'icon-only', 'dual-column');
+        } else {
+          // Toggle between dual-column and icon-only grid
+          if (root.classList.contains('grid') && root.classList.contains('dual-column')) {
+            root.classList.remove('dual-column');
+            root.classList.add('icon-only');
+          } else if (root.classList.contains('grid') && root.classList.contains('icon-only')) {
+            root.classList.remove('grid', 'icon-only');
+          } else {
+            root.classList.add('grid', 'dual-column');
+          }
+        }
+        try { 
+          chrome.storage.local.set({
+            gridView: root.classList.contains('grid'),
+            gridMode: root.classList.contains('icon-only') ? 'icon-only' : 'dual-column'
+          }); 
+        } catch(e){}
       };
       if (compactToggle) {
         compactToggle.addEventListener('click', function(e) { e.preventDefault(); applyCompact(!document.body.classList.contains('compact')); });
@@ -662,19 +705,49 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Read compact/grid saved state
       try {
-        chrome.storage.local.get(['compactMode','gridView'], function(items) {
+        chrome.storage.local.get(['compactMode','gridView','gridMode'], function(items) {
           if (items && items.compactMode) applyCompact(items.compactMode);
-          if (items && items.gridView) applyGrid(items.gridView);
+          if (items && items.gridView) {
+            var root = document.documentElement;
+            root.classList.add('grid');
+            root.classList.add(items.gridMode || 'dual-column');
+          }
         });
       } catch(e) {}
 
-      // Search history (simple recent terms)
+      // Search history with improved UI
       var searchEl = document.querySelector('#search input');
-  var historyEl = document.createElement('div'); historyEl.id = 'search-history'; historyEl.style.padding = '4px 6px'; historyEl.style.fontSize = '11px'; historyEl.style.position = 'relative'; historyEl.style.zIndex = '210';
-      var clearHistBtn = document.createElement('button'); clearHistBtn.textContent = 'Clear'; clearHistBtn.style.marginLeft='6px';
+      var historyEl = document.createElement('div'); 
+      historyEl.id = 'search-history'; 
+      historyEl.style.padding = '4px 6px';
+      historyEl.style.fontSize = '11px';
+      historyEl.style.position = 'absolute';
+      historyEl.style.zIndex = '210';
+      historyEl.style.backgroundColor = document.body.style.backgroundColor || '#000000';
+      historyEl.style.width = '100%';
+      historyEl.style.boxSizing = 'border-box';
+      historyEl.style.left = '0';
+      historyEl.style.top = '100%';
+      historyEl.style.border = '1px solid #333';
+      historyEl.style.borderTop = 'none';
+      
+      var clearHistBtn = document.createElement('button'); 
+      clearHistBtn.textContent = 'Clear History';
+      clearHistBtn.style.marginLeft = '6px';
+      clearHistBtn.style.float = 'right';
+      clearHistBtn.style.padding = '2px 8px';
+      
       historyEl.appendChild(clearHistBtn);
-      var historyList = document.createElement('div'); historyList.id = 'search-history-list'; historyList.style.marginTop='6px'; historyEl.appendChild(historyList);
-      if (searchEl && searchEl.parentNode) searchEl.parentNode.appendChild(historyEl);
+      var historyList = document.createElement('div');
+      historyList.id = 'search-history-list';
+      historyList.style.marginTop = '6px';
+      historyList.style.clear = 'both';
+      historyEl.appendChild(historyList);
+      
+      if (searchEl && searchEl.parentNode) {
+        searchEl.parentNode.style.position = 'relative';
+        searchEl.parentNode.appendChild(historyEl);
+      }
       var updateHistoryDisplay = function() {
         historyList.innerHTML='';
         try {
@@ -711,8 +784,12 @@ document.addEventListener("DOMContentLoaded", function() {
             try {
               chrome.storage.local.get('searchHistory', function(obj){
                 var h = obj.searchHistory || [];
-                h = [v].concat(h.filter(function(x){return x!==v})).slice(0,50);
-                chrome.storage.local.set({searchHistory: h}, updateHistoryDisplay);
+                if (v.trim()) { // Only store non-empty terms
+                  h = [v].concat(h.filter(function(x){return x!==v})).slice(0,50);
+                  chrome.storage.local.set({searchHistory: h}, updateHistoryDisplay);
+                }
+                // Trigger search
+                searchEl.dispatchEvent(new Event('input', { bubbles: true }));
               });
             } catch(e){}
           }
