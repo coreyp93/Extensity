@@ -282,26 +282,43 @@ document.addEventListener("DOMContentLoaded", function() {
         } catch(e) {}
       });
 
-      // Resize handle
-      var handle = document.getElementById('resize-handle');
+      // Resize handles
       var isResizing = false;
       var startX=0, startY=0, startW=0, startH=0;
+      var resizeEdge = '';
+      
       var onMouseMove = function(e) {
         if (!isResizing) return;
         var clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
         var clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY);
         var dx = clientX - startX;
         var dy = clientY - startY;
-        var newW = Math.max(280, Math.round(startW + dx));
-        var newH = Math.max(160, Math.round(startH + dy));
+        var newW = startW, newH = startH;
+
+        // Handle different edges
+        if (resizeEdge.includes('right')) {
+          newW = Math.max(280, Math.round(startW + dx));
+        } else if (resizeEdge.includes('left')) {
+          newW = Math.max(280, Math.round(startW - dx));
+        }
+
+        if (resizeEdge.includes('bottom')) {
+          newH = Math.max(160, Math.round(startH + dy));
+        } else if (resizeEdge.includes('top')) {
+          newH = Math.max(160, Math.round(startH - dy));
+        }
+
         document.documentElement.style.width = newW + 'px';
         document.body.style.width = newW + 'px';
         document.documentElement.style.height = newH + 'px';
         document.body.style.height = newH + 'px';
       };
+
       var onMouseUp = function(e) {
         if (!isResizing) return;
         isResizing = false;
+        resizeEdge = '';
+        document.body.style.cursor = '';
         // save size
         try {
           var w = parseInt(document.documentElement.style.width,10) || DEFAULT_SIZE.w;
@@ -313,28 +330,42 @@ document.addEventListener("DOMContentLoaded", function() {
         window.removeEventListener('mouseup', onMouseUp);
         window.removeEventListener('touchend', onMouseUp);
       };
-      if (handle) {
-        handle.addEventListener('mousedown', function(e) {
+
+      var setupResizeHandle = function(handle) {
+        var startResize = function(e) {
           isResizing = true;
-          startX = e.clientX;
-          startY = e.clientY;
+          startX = e.clientX || (e.touches && e.touches[0].clientX);
+          startY = e.clientY || (e.touches && e.touches[0].clientY);
           startW = parseInt(document.documentElement.style.width,10) || document.documentElement.clientWidth || DEFAULT_SIZE.w;
           startH = parseInt(document.documentElement.style.height,10) || document.documentElement.clientHeight || DEFAULT_SIZE.h;
+          
+          // Determine resize edge
+          if (handle.classList.contains('corner')) {
+            resizeEdge = handle.className.match(/corner-(tl|tr|bl|br)/)[1];
+          } else {
+            resizeEdge = Array.from(handle.classList)
+              .find(c => ['top', 'bottom', 'left', 'right'].includes(c));
+          }
+          
+          document.body.style.cursor = window.getComputedStyle(handle).cursor;
           window.addEventListener('mousemove', onMouseMove);
           window.addEventListener('mouseup', onMouseUp);
           e.preventDefault();
-        });
+          e.stopPropagation();
+        };
+
+        handle.addEventListener('mousedown', startResize);
         handle.addEventListener('touchstart', function(e) {
-          isResizing = true;
-          startX = e.touches[0].clientX;
-          startY = e.touches[0].clientY;
-          startW = parseInt(document.documentElement.style.width,10) || document.documentElement.clientWidth || DEFAULT_SIZE.w;
-          startH = parseInt(document.documentElement.style.height,10) || document.documentElement.clientHeight || DEFAULT_SIZE.h;
+          e.clientX = e.touches[0].clientX;
+          e.clientY = e.touches[0].clientY;
+          startResize(e);
           window.addEventListener('touchmove', onMouseMove);
           window.addEventListener('touchend', onMouseUp);
-          e.preventDefault();
         });
-      }
+      };
+
+      // Setup all resize handles
+      document.querySelectorAll('.resize-handle').forEach(setupResizeHandle);
 
       // Reset size button
       var resetBtn = document.getElementById('reset-size');
@@ -349,31 +380,93 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
-      // Color panel toggle and inputs
+      // Color panel functionality
       var colorToggle = document.getElementById('color-controls');
       var colorPanel = document.getElementById('color-panel');
       var closeColor = document.getElementById('close-color-panel');
+      var bgInput = document.getElementById('bg-color');
+      var fInput = document.getElementById('font-color');
+
+      // Function to update colors
+      var updateColors = function(bgColor, fontColor) {
+        // Update background color
+        if (bgColor) {
+          document.body.style.backgroundColor = bgColor;
+          document.documentElement.style.backgroundColor = bgColor;
+          // Update input elements background
+          document.querySelectorAll('input[type="text"]').forEach(function(input) {
+            input.style.backgroundColor = bgColor;
+          });
+        }
+
+        // Update font color
+        if (fontColor) {
+          // Update main font color
+          document.body.style.color = fontColor;
+          // Update links and icons
+          document.querySelectorAll('a, .fa').forEach(function(el) {
+            if (!el.classList.contains('fa-facebook-official') && 
+                !el.classList.contains('fa-twitter') && 
+                !el.classList.contains('fa-star')) {
+              el.style.color = fontColor;
+            }
+          });
+          // Update input text color
+          document.querySelectorAll('input[type="text"]').forEach(function(input) {
+            input.style.color = fontColor;
+          });
+        }
+
+        // Save colors to storage
+        try {
+          var settings = {};
+          if (bgColor) settings.bgColor = bgColor;
+          if (fontColor) settings.fontColor = fontColor;
+          chrome.storage.local.set(settings);
+        } catch(e) {
+          console.error('Failed to save color settings:', e);
+        }
+      };
+
+      // Color panel toggle
       if (colorToggle && colorPanel) {
         colorToggle.addEventListener('click', function(e) {
           e.preventDefault();
-          colorPanel.style.display = (colorPanel.style.display === 'none' || !colorPanel.style.display) ? 'block' : 'none';
+          if (colorPanel.style.display === 'none' || !colorPanel.style.display) {
+            colorPanel.style.display = 'block';
+            // Update color inputs with current values
+            bgInput.value = getComputedStyle(document.body).backgroundColor;
+            fInput.value = getComputedStyle(document.body).color;
+          } else {
+            colorPanel.style.display = 'none';
+          }
         });
       }
+
       if (closeColor && colorPanel) {
-        closeColor.addEventListener('click', function() { colorPanel.style.display = 'none'; });
+        closeColor.addEventListener('click', function() { 
+          colorPanel.style.display = 'none'; 
+        });
       }
-      var bgInput = document.getElementById('bg-color');
-      var fInput = document.getElementById('font-color');
-      var saveColor = function() {
-        try {
-          var bg = bgInput && bgInput.value ? bgInput.value : null;
-          var fc = fInput && fInput.value ? fInput.value : null;
-          if (bg) { document.body.style.backgroundColor = bg; document.documentElement.style.backgroundColor = bg; chrome.storage.local.set({bgColor:bg}); }
-          if (fc) { document.body.style.color = fc; chrome.storage.local.set({fontColor:fc}); }
-        } catch(e) {}
-      };
-      if (bgInput) bgInput.addEventListener('input', saveColor);
-      if (fInput) fInput.addEventListener('input', saveColor);
+
+      // Color input handlers
+      if (bgInput) {
+        bgInput.addEventListener('input', function() {
+          updateColors(this.value, null);
+        });
+      }
+
+      if (fInput) {
+        fInput.addEventListener('input', function() {
+          updateColors(null, this.value);
+        });
+      }
+
+      // Initialize with saved colors
+      chrome.storage.local.get(['bgColor', 'fontColor'], function(items) {
+        if (items.bgColor) updateColors(items.bgColor, null);
+        if (items.fontColor) updateColors(null, items.fontColor);
+      });
 
     } catch(e) { /* non-fatal */ }
   });

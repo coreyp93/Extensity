@@ -108,8 +108,15 @@
 	<div style="margin-top:6px;"><button id="close-color-panel">Close</button></div>
 </div>
 
-<!-- Resize handle (bottom-right) -->
-<div id="resize-handle" title="Drag to resize" aria-hidden="true"></div>
+<!-- Resize handles -->
+<div class="resize-handle top" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle bottom" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle left" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle right" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle corner corner-tl" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle corner corner-tr" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle corner corner-bl" title="Drag to resize" aria-hidden="true"></div>
+<div class="resize-handle corner corner-br" title="Drag to resize" aria-hidden="true"></div>
 
 <script type="text/html" id="item-template">
 	<!-- ko if: !isApp() -->
