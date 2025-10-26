@@ -54,6 +54,8 @@ document.addEventListener("DOMContentLoaded", function() {
     self.profiles = new ProfileCollectionModel();
     self.exts = new ExtensionCollectionModel();
     self.opts = new OptionsCollection();
+  // selectedProfiles supports stacking multiple profiles if opts.stackProfiles==true
+  self.selectedProfiles = ko.observableArray().extend({persistable: 'selectedProfiles'});
     self.dismissals = new DismissalsCollection();
     self.switch = new SwitchViewModel(self.exts, self.profiles, self.opts);
     self.search = new SearchViewModel();
@@ -135,6 +137,28 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     self.setProfile = function(p) {
+      // If stacking mode enabled, toggle membership in selectedProfiles
+      try {
+        if (self.opts && self.opts.stackProfiles && self.opts.stackProfiles()) {
+          var name = p.name();
+          var idx = self.selectedProfiles.indexOf(name);
+          if (idx === -1) {
+            self.selectedProfiles.push(name);
+          } else {
+            self.selectedProfiles.splice(idx, 1);
+          }
+          // apply union of all selected profiles (plus always on)
+          var chosen = _.union.apply(_, [self.profiles.always_on().items()].concat(
+            _(self.selectedProfiles()).map(function(n){ var pr = self.profiles.find(n); return pr ? pr.items() : []; })
+          ));
+          var to_enable = _.intersection(self.exts.disabled.pluck(), chosen);
+          var to_disable = _.difference(self.exts.enabled.pluck(), chosen);
+          _(to_enable).each(function(id) { try{ self.exts.find(id).enable() } catch(e){} });
+          _(to_disable).each(function(id) { try{ self.exts.find(id).disable() } catch(e){} });
+          return;
+        }
+      } catch(e) {}
+      // Fallback: single-select profile (original behavior)
       self.activeProfile(p.name());
       // Profile items, plus always-on items
       var ids = _.union(p.items(), self.profiles.always_on().items());
@@ -247,7 +271,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ------------------ UI helpers: resize & color controls ------------------
     try {
-      var DEFAULT_SIZE = {w: 360, h: 520};
+  var DEFAULT_SIZE = {w: 540, h: 520}; // increased default width by 50%
+  var MIN_WIDTH = 280, MIN_HEIGHT = 160;
 
       var applySavedSettings = function(settings) {
         settings = settings || {};
@@ -286,7 +311,16 @@ document.addEventListener("DOMContentLoaded", function() {
       var isResizing = false;
       var startX=0, startY=0, startW=0, startH=0;
       var resizeEdge = '';
-      
+
+      var clampToScreen = function(w,h) {
+        try {
+          var margin = 20;
+          var maxW = Math.max(MIN_WIDTH, Math.min(w, (window.screen && window.screen.availWidth) ? window.screen.availWidth - margin : 1200));
+          var maxH = Math.max(MIN_HEIGHT, Math.min(h, (window.screen && window.screen.availHeight) ? window.screen.availHeight - margin : 900));
+          return {w: maxW, h: maxH};
+        } catch(e) { return {w:w,h:h}; }
+      };
+
       var onMouseMove = function(e) {
         if (!isResizing) return;
         var clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
@@ -295,23 +329,25 @@ document.addEventListener("DOMContentLoaded", function() {
         var dy = clientY - startY;
         var newW = startW, newH = startH;
 
-        // Handle different edges
-        if (resizeEdge.includes('right')) {
-          newW = Math.max(280, Math.round(startW + dx));
-        } else if (resizeEdge.includes('left')) {
-          newW = Math.max(280, Math.round(startW - dx));
+        // Right/Left
+        if (resizeEdge.indexOf('right') !== -1) {
+          newW = Math.round(startW + dx);
+        } else if (resizeEdge.indexOf('left') !== -1) {
+          newW = Math.round(startW - dx);
         }
 
-        if (resizeEdge.includes('bottom')) {
-          newH = Math.max(160, Math.round(startH + dy));
-        } else if (resizeEdge.includes('top')) {
-          newH = Math.max(160, Math.round(startH - dy));
+        // Bottom/Top
+        if (resizeEdge.indexOf('bottom') !== -1) {
+          newH = Math.round(startH + dy);
+        } else if (resizeEdge.indexOf('top') !== -1) {
+          newH = Math.round(startH - dy);
         }
 
-        document.documentElement.style.width = newW + 'px';
-        document.body.style.width = newW + 'px';
-        document.documentElement.style.height = newH + 'px';
-        document.body.style.height = newH + 'px';
+        var clamped = clampToScreen(Math.max(MIN_WIDTH, newW), Math.max(MIN_HEIGHT, newH));
+        document.documentElement.style.width = clamped.w + 'px';
+        document.body.style.width = clamped.w + 'px';
+        document.documentElement.style.height = clamped.h + 'px';
+        document.body.style.height = clamped.h + 'px';
       };
 
       var onMouseUp = function(e) {
@@ -338,15 +374,18 @@ document.addEventListener("DOMContentLoaded", function() {
           startY = e.clientY || (e.touches && e.touches[0].clientY);
           startW = parseInt(document.documentElement.style.width,10) || document.documentElement.clientWidth || DEFAULT_SIZE.w;
           startH = parseInt(document.documentElement.style.height,10) || document.documentElement.clientHeight || DEFAULT_SIZE.h;
-          
-          // Determine resize edge
+
+          // Determine resize edge: map corners to descriptive words
           if (handle.classList.contains('corner')) {
-            resizeEdge = handle.className.match(/corner-(tl|tr|bl|br)/)[1];
+            var m = handle.className.match(/corner-(tl|tr|bl|br)/);
+            var corner = (m && m[1]) ? m[1] : '';
+            var map = {tl: 'top left', tr: 'top right', bl: 'bottom left', br: 'bottom right'};
+            resizeEdge = map[corner] || '';
           } else {
-            resizeEdge = Array.from(handle.classList)
-              .find(c => ['top', 'bottom', 'left', 'right'].includes(c));
+            var cls = Array.from(handle.classList).find(function(c) { return ['top','bottom','left','right'].indexOf(c) !== -1; });
+            resizeEdge = cls || '';
           }
-          
+
           document.body.style.cursor = window.getComputedStyle(handle).cursor;
           window.addEventListener('mousemove', onMouseMove);
           window.addEventListener('mouseup', onMouseUp);
@@ -380,6 +419,18 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
+      // Helpers: convert rgb() to hex for color input compatibility
+      var rgbToHex = function(rgb) {
+        if (!rgb) return '#000000';
+        var m = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+        if (!m) return rgb; // maybe already hex
+        var r = parseInt(m[1],10), g = parseInt(m[2],10), b = parseInt(m[3],10);
+        var hex = '#' + [r,g,b].map(function(x){
+          var s = x.toString(16); return (s.length==1) ? '0'+s : s;
+        }).join('');
+        return hex;
+      };
+
       // Color panel functionality
       var colorToggle = document.getElementById('color-controls');
       var colorPanel = document.getElementById('color-panel');
@@ -387,7 +438,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var bgInput = document.getElementById('bg-color');
       var fInput = document.getElementById('font-color');
 
-      // Function to update colors
+  // Function to update colors
       var updateColors = function(bgColor, fontColor) {
         // Update background color
         if (bgColor) {
@@ -434,9 +485,13 @@ document.addEventListener("DOMContentLoaded", function() {
           e.preventDefault();
           if (colorPanel.style.display === 'none' || !colorPanel.style.display) {
             colorPanel.style.display = 'block';
-            // Update color inputs with current values
-            bgInput.value = getComputedStyle(document.body).backgroundColor;
-            fInput.value = getComputedStyle(document.body).color;
+            // Update color inputs with current values (convert rgb to hex)
+            try {
+              var bodyBg = getComputedStyle(document.body).backgroundColor;
+              var bodyColor = getComputedStyle(document.body).color;
+              if (bgInput) bgInput.value = rgbToHex(bodyBg);
+              if (fInput) fInput.value = rgbToHex(bodyColor);
+            } catch(e) {}
           } else {
             colorPanel.style.display = 'none';
           }
@@ -462,11 +517,117 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
+      // Reset colors button
+      var resetColorsBtn = document.getElementById('reset-colors');
+      if (resetColorsBtn) {
+        resetColorsBtn.addEventListener('click', function() {
+          var defBg = '#000000', defFont = '#00ffff';
+          if (bgInput) bgInput.value = defBg;
+          if (fInput) fInput.value = defFont;
+          updateColors(defBg, defFont);
+        });
+      }
+
+      // Save theme button (simple save into local storage as presets)
+      var saveThemeBtn = document.getElementById('save-theme');
+      if (saveThemeBtn) {
+        saveThemeBtn.addEventListener('click', function() {
+          var name = prompt('Theme name:');
+          if (!name) return;
+          try {
+            chrome.storage.local.get('themes', function(obj) {
+              var themes = obj.themes || {};
+              themes[name] = {bg: (bgInput && bgInput.value) || getComputedStyle(document.body).backgroundColor, font: (fInput && fInput.value) || getComputedStyle(document.body).color};
+              chrome.storage.local.set({themes: themes});
+              alert('Theme saved: ' + name);
+            });
+          } catch(e) {}
+        });
+      }
+
       // Initialize with saved colors
       chrome.storage.local.get(['bgColor', 'fontColor'], function(items) {
-        if (items.bgColor) updateColors(items.bgColor, null);
-        if (items.fontColor) updateColors(null, items.fontColor);
+        if (items && items.bgColor) updateColors(items.bgColor, null);
+        if (items && items.fontColor) updateColors(null, items.fontColor);
       });
+
+      // Compact and grid toggles
+      var compactToggle = document.getElementById('compact-toggle');
+      var gridToggle = document.getElementById('grid-toggle');
+      var applyCompact = function(enabled) {
+        document.body.classList.toggle('compact', !!enabled);
+        try { chrome.storage && chrome.storage.local && chrome.storage.local.set({compactMode: !!enabled}); } catch(e){}
+      };
+      var applyGrid = function(enabled) {
+        document.documentElement.classList.toggle('grid', !!enabled);
+        try { chrome.storage && chrome.storage.local && chrome.storage.local.set({gridView: !!enabled}); } catch(e){}
+      };
+      if (compactToggle) {
+        compactToggle.addEventListener('click', function(e) { e.preventDefault(); applyCompact(!document.body.classList.contains('compact')); });
+      }
+      if (gridToggle) {
+        gridToggle.addEventListener('click', function(e) { e.preventDefault(); applyGrid(!document.documentElement.classList.contains('grid')); });
+      }
+
+      // Read compact/grid saved state
+      try {
+        chrome.storage.local.get(['compactMode','gridView'], function(items) {
+          if (items && items.compactMode) applyCompact(items.compactMode);
+          if (items && items.gridView) applyGrid(items.gridView);
+        });
+      } catch(e) {}
+
+      // Search history (simple recent terms)
+      var searchEl = document.querySelector('#search input');
+      var historyEl = document.createElement('div'); historyEl.id = 'search-history'; historyEl.style.padding = '4px 6px'; historyEl.style.fontSize = '11px';
+      var clearHistBtn = document.createElement('button'); clearHistBtn.textContent = 'Clear'; clearHistBtn.style.marginLeft='6px';
+      historyEl.appendChild(clearHistBtn);
+      var historyList = document.createElement('div'); historyList.id = 'search-history-list'; historyList.style.marginTop='6px'; historyEl.appendChild(historyList);
+      if (searchEl && searchEl.parentNode) searchEl.parentNode.appendChild(historyEl);
+      var updateHistoryDisplay = function() {
+        historyList.innerHTML='';
+        try {
+          // Read history from local storage; read enable flag from sync (options) first, fall back to local
+          chrome.storage.local.get('searchHistory', function(obj) {
+            var h = (obj && obj.searchHistory) ? obj.searchHistory : [];
+            var show = true;
+            try {
+              chrome.storage.sync.get('enableSearchHistory', function(o) {
+                if (o && typeof o.enableSearchHistory !== 'undefined') show = o.enableSearchHistory;
+                if (!show) { historyList.style.display='none'; return; }
+                historyList.style.display = h.length ? 'block' : 'none';
+                h.slice(0,10).forEach(function(term) {
+                  var b = document.createElement('button'); b.textContent = term; b.style.margin='2px'; b.addEventListener('click', function(){ searchEl.value = term; searchEl.dispatchEvent(new Event('input')); }); historyList.appendChild(b);
+                });
+              });
+            } catch(e) {
+              // If sync not available, show by default
+              historyList.style.display = h.length ? 'block' : 'none';
+              h.slice(0,10).forEach(function(term) {
+                var b = document.createElement('button'); b.textContent = term; b.style.margin='2px'; b.addEventListener('click', function(){ searchEl.value = term; searchEl.dispatchEvent(new Event('input')); }); historyList.appendChild(b);
+              });
+            }
+          });
+        } catch(e) {}
+      };
+      clearHistBtn.addEventListener('click', function(){ try { chrome.storage.local.set({searchHistory:[]}, updateHistoryDisplay); } catch(e){} });
+      if (searchEl) {
+        var lastPush = null;
+        searchEl.addEventListener('keydown', function(ev){
+          if (ev.key === 'Enter') {
+            var v = (searchEl.value || '').trim();
+            if (!v) return;
+            try {
+              chrome.storage.local.get('searchHistory', function(obj){
+                var h = obj.searchHistory || [];
+                h = [v].concat(h.filter(function(x){return x!==v})).slice(0,50);
+                chrome.storage.local.set({searchHistory: h}, updateHistoryDisplay);
+              });
+            } catch(e){}
+          }
+        });
+      }
+      updateHistoryDisplay();
 
     } catch(e) { /* non-fatal */ }
   });

@@ -98,6 +98,14 @@ var OptionsCollection = function() {
     showReserved : false
   };
 
+  // Add new optional UI features and defaults
+  _( {
+    compactMode: false,
+    gridView: false,
+    enableSearchHistory: true,
+    stackProfiles: false
+  } ).each(function(val,key) { defs[key] = val; });
+
   // Define observables.
   _(defs).each(function(def,key) {
     self[key] = ko.observable(def);

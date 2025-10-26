@@ -34,6 +34,12 @@
 		<!-- Color controls toggle -->
 		<a href="#" id="color-controls" class="page" title="Theme controls"><i class="fa fa-sliders" aria-hidden="true"></i></a>
 
+		<!-- Compact mode toggle -->
+		<a href="#" id="compact-toggle" class="page" title="Compact mode"><i class="fa fa-compress" aria-hidden="true"></i></a>
+
+		<!-- Grid mode toggle -->
+		<a href="#" id="grid-toggle" class="page" title="Grid view"><i class="fa fa-th" aria-hidden="true"></i></a>
+
 		<a href="profiles.html" class="page" target="_blank"><i class="fa fa-user-circle-o" alt="Profiles" title="Profiles"></i></a>
 
 		<a href="chrome://extensions" class="page" id="chrome-extensions" target="_blank" data-sbind="click: openChromeExtensions"><i class="fa fa-puzzle-piece" alt="Chrome Extensions" title="Chrome Extensions"></i></a>
@@ -105,7 +111,11 @@
 <div id="color-panel" style="display:none;">
 	<label style="display:block; margin:6px 0;">Background: <input type="color" id="bg-color" value="#000000" /></label>
 	<label style="display:block; margin:6px 0;">Font: <input type="color" id="font-color" value="#00ffff" /></label>
-	<div style="margin-top:6px;"><button id="close-color-panel">Close</button></div>
+	<div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
+		<button id="save-theme">Save Theme</button>
+		<button id="reset-colors">Reset Colors</button>
+		<button id="close-color-panel">Close</button>
+	</div>
 </div>
 
 <!-- Resize handles -->

@@ -1,9 +1,10 @@
 html, body {
-	width: 350px;
-	height: 500px;
+	width: 540px; /* 50% wider by default */
+	height: 520px;
 	margin: 0;
 	padding: 0;
 	background-color: #000000 !important;
+	transition: background-color 180ms ease, color 180ms ease;
 }
 
 body {
@@ -11,7 +12,8 @@ body {
 	font-size: 12px;
 	user-select: none;
 	min-width: 350px;
-	min-height: 500px;
+	min-width: 540px;
+	min-height: 320px;
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -397,6 +399,26 @@ body {
 	bottom: 0;
 	right: 0;
 	cursor: se-resize;
+}
+
+/* Compact mode reduces paddings and font sizes to show more items */
+body.compact {
+	font-size: 11px;
+}
+body.compact section.main {
+	padding: 0 4px;
+}
+
+/* Grid view for items */
+.grid #content ul {
+	display: flex;
+	flex-wrap: wrap;
+}
+.grid #content ul li {
+	width: 48%;
+	box-sizing: border-box;
+	margin: 4px 1%;
+	display: inline-block;
 }
 
 /* Make sure content area doesn't overlay header buttons */
