@@ -106,10 +106,18 @@ document.addEventListener("DOMContentLoaded", function() {
       return i.name().toUpperCase().indexOf(self.search.q().toUpperCase()) !== -1;
     };
 
+
     var filterProfileFn = function(i) {
-      if(!i.reserved()) return true;
-      return self.opts.showReserved() && i.hasItems();
-    }
+      // Show all profiles by default, unless user disables reserved
+      if (!i.reserved()) return true;
+      // Show reserved if option enabled, or always show Always On/Favorites
+      return self.opts.showReserved() !== false || i.name() === "__always_on" || i.name() === "__favorites";
+    };
+
+    var profileSortFn = function(i) {
+      // Reserved profiles first, then alphabetical
+      return (i.reserved() ? '0' : '1') + i.name().toUpperCase();
+    };
 
     var filterFavoriteFn = function(i) {
       return (self.profiles.favorites().contains(i));
@@ -156,9 +164,12 @@ document.addEventListener("DOMContentLoaded", function() {
         .filter(filterFn);
     }).extend({countable: null});
 
+
     self.listedProfiles = ko.computed(function() {
       return _(self.profiles.items())
-        .filter(filterProfileFn);
+        .filter(filterProfileFn)
+        .sortBy(profileSortFn)
+        .value();
     }).extend({countable: null});
 
     self.listedFavorites = ko.computed(function() {
