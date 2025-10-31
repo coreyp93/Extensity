@@ -684,16 +684,7 @@ document.addEventListener("DOMContentLoaded", function() {
         } catch(e) {
           return color;
         }
-      }        // Save colors to storage
-        try {
-          var settings = {};
-          if (bgColor) settings.bgColor = bgColor;
-          if (fontColor) settings.fontColor = fontColor;
-          chrome.storage.local.set(settings);
-        } catch(e) {
-          console.error('Failed to save color settings:', e);
-        }
-      };
+      }
 
       // Theme panel toggle
       if (themeToggle && themePanel) {
